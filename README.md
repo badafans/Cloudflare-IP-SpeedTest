@@ -20,7 +20,7 @@ ipspeedtest 可以接受以下参数：
 - port:	端口 (default 443)
 - speedtest: 下载测速协程数量,设为0禁用测速 (default 5)
 - tls: 是否启用TLS (default true)
-- url: 测速文件地址 (default "archlinux.cloudflaremirrors.com/archlinux/iso/latest/archlinux-x86_64.iso")
+- url: 测速文件地址 (default "speed.cloudflare.com/__down?bytes=500000000")
 
 # 运行
 在终端中运行以下命令来启动程序：
