@@ -22,18 +22,19 @@ import (
 )
 
 const (
-	requestURL  = "https://speed.cloudflare.com/cdn-cgi/trace" // 请求URL
-	timeout     = 1 * time.Second                              // 超时时间
-	maxDuration = 2 * time.Second                              // 最大持续时间
+	requestURL  = "speed.cloudflare.com/cdn-cgi/trace" // 请求trace URL
+	timeout     = 1 * time.Second                      // 超时时间
+	maxDuration = 2 * time.Second                      // 最大持续时间
 )
 
 var (
-	File        = flag.String("file", "ip.txt", "IP地址文件名称")                                                                         // IP地址文件名称
-	outFile     = flag.String("outfile", "ip.csv", "输出文件名称")                                                                        // 输出文件名称
-	defaultPort = flag.Int("port", 443, "端口")                                                                                       // 端口
-	maxThreads  = flag.Int("max", 100, "https请求最大协程数")                                                                              // 最大协程数
-	speedTest   = flag.Int("speedtest", 5, "下载测速协程数量,设为0禁用测速")                                                                      // 下载测速协程数量
-	url         = flag.String("url", "https://archlinux.cloudflaremirrors.com/archlinux/iso/latest/archlinux-x86_64.iso", "测速文件地址") // 测速文件地址
+	File         = flag.String("file", "ip.txt", "IP地址文件名称")                                                                 // IP地址文件名称
+	outFile      = flag.String("outfile", "ip.csv", "输出文件名称")                                                                // 输出文件名称
+	defaultPort  = flag.Int("port", 443, "端口")                                                                               // 端口
+	maxThreads   = flag.Int("max", 100, "并发请求最大协程数")                                                                         // 最大协程数
+	speedTest    = flag.Int("speedtest", 5, "下载测速协程数量,设为0禁用测速")                                                              // 下载测速协程数量
+	speedTestURL = flag.String("url", "archlinux.cloudflaremirrors.com/archlinux/iso/latest/archlinux-x86_64.iso", "测速文件地址") // 测速文件地址
+	enableTLS    = flag.Bool("tls", true, "是否启用TLS")                                                                         // TLS是否启用
 )
 
 type result struct {
@@ -74,8 +75,8 @@ func increaseMaxOpenFiles() {
 
 func main() {
 	flag.Parse()
-	startTime := time.Now()
 
+	startTime := time.Now()
 	osType := runtime.GOOS
 	if osType == "linux" {
 		increaseMaxOpenFiles()
@@ -166,7 +167,10 @@ func main() {
 				wg.Done()
 				count++
 				percentage := float64(count) / float64(total) * 100
-				fmt.Printf("\033[32m已完成: %d\033[0m \033[31m总数: %d\033[0m \033[33m百分比: %.2f%%\033[0m\r", count, total, percentage)
+				fmt.Printf("\033[32m已完成: %d\033[0m \033[31m总数: %d\033[0m \033[33m已完成: %.2f%%\033[0m\r", count, total, percentage)
+				if count == total {
+					fmt.Printf("\033[32m已完成: %d\033[0m \033[31m总数: %d\033[0m \033[33m已完成: %.2f%%\033[0m\n", count, total, percentage)
+				}
 			}()
 
 			dialer := &net.Dialer{
@@ -191,6 +195,15 @@ func main() {
 				},
 				Timeout: timeout,
 			}
+
+			var protocol string
+			if *enableTLS {
+				protocol = "https://"
+			} else {
+				protocol = "http://"
+			}
+			requestURL := protocol + requestURL
+
 			req, _ := http.NewRequest("GET", requestURL, nil)
 
 			// 添加用户代理
@@ -236,21 +249,32 @@ func main() {
 		fmt.Println("没有发现有效的IP")
 		return
 	}
-	// 清除输出内容
-	fmt.Print("\033[2J")
 	var results []speedtestresult
 	if *speedTest > 0 {
 		fmt.Printf("开始测速\n")
 		var wg2 sync.WaitGroup
 		wg2.Add(*speedTest)
+		count = 0
+		total := len(resultChan)
+		results = []speedtestresult{}
 		for i := 0; i < *speedTest; i++ {
+			thread <- struct{}{}
 			go func() {
-				defer wg2.Done()
+				defer func() {
+					<-thread
+					wg2.Done()
+				}()
 				for res := range resultChan {
 
 					downloadSpeed := getDownloadSpeed(res.ip)
 					results = append(results, speedtestresult{result: res, downloadSpeed: downloadSpeed})
 
+					count++
+					percentage := float64(count) / float64(total) * 100
+					fmt.Printf("\033[33m已完成: %.2f%%\033[0m\r", percentage)
+					if count == total {
+						fmt.Printf("\033[33m已完成: %.2f%%\033[0m\n", percentage)
+					}
 				}
 			}()
 		}
@@ -280,9 +304,9 @@ func main() {
 
 	writer := csv.NewWriter(file)
 	if *speedTest > 0 {
-		writer.Write([]string{"IP地址", "TLS端口", "数据中心", "地区", "城市", "网络延迟", "下载速度"})
+		writer.Write([]string{"IP地址", "端口", "数据中心", "地区", "城市", "网络延迟", "下载速度"})
 	} else {
-		writer.Write([]string{"IP地址", "TLS端口", "数据中心", "地区", "城市", "网络延迟"})
+		writer.Write([]string{"IP地址", "端口", "数据中心", "地区", "城市", "网络延迟"})
 	}
 	for _, res := range results {
 		if *speedTest > 0 {
@@ -337,8 +361,15 @@ func inc(ip net.IP) {
 
 // 测速函数
 func getDownloadSpeed(ip string) float64 {
+	var protocol string
+	if *enableTLS {
+		protocol = "https://"
+	} else {
+		protocol = "http://"
+	}
+	speedTestURL := protocol + *speedTestURL
 	// 创建请求
-	req, _ := http.NewRequest("GET", *url, nil)
+	req, _ := http.NewRequest("GET", speedTestURL, nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 
 	// 创建TCP连接

@@ -14,18 +14,19 @@ go build -o ipspeedtest main.go
 # 参数说明
 ipspeedtest 可以接受以下参数：
 
-- file：指定包含要测试的 IP 地址的文本文件的名称。默认为 ip.txt。
-- outfile：指定要将结果写入的 CSV 文件的名称。默认为 ip.csv。
-- port：指定要与 IP 地址一起使用的端口号。默认为 443。
-- max：指定要使用的最大协程数。默认为 100。
-- speedtest：指定要使用的下载测速协程数量。如果禁用测速，则将其设置为 0。默认为 5。
-- url：指定用于测速的文件的 URL。默认为 https://archlinux.cloudflaremirrors.com/archlinux/iso/latest/archlinux-x86_64.iso。
+- file: IP地址文件名称 (default "ip.txt")
+- max: 并发请求最大协程数 (default 100)
+- outfile: 输出文件名称 (default "ip.csv")
+- port:	端口 (default 443)
+- speedtest: 下载测速协程数量,设为0禁用测速 (default 5)
+- tls: 是否启用TLS (default true)
+- url: 测速文件地址 (default "archlinux.cloudflaremirrors.com/archlinux/iso/latest/archlinux-x86_64.iso")
 
 # 运行
 在终端中运行以下命令来启动程序：
 
 ```
-./ipspeedtest -file ip.txt -outfile ip.csv -port 443 -max 100 -speedtest 1 -url https://archlinux.cloudflaremirrors.com/archlinux/iso/latest/archlinux-x86_64.iso
+./ipspeedtest -file=ip.txt -outfile=ip.csv -port=443 -max=100 -speedtest=1 -tls=true -url=archlinux.cloudflaremirrors.com/archlinux/iso/latest/archlinux-x86_64.iso
 ```
 请替换参数值以符合您的实际需求。
 
