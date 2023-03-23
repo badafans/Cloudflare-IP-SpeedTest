@@ -32,7 +32,7 @@ var (
 	outFile     = flag.String("outfile", "ip.csv", "输出文件名称")                                                                        // 输出文件名称
 	defaultPort = flag.Int("port", 443, "端口")                                                                                       // 端口
 	maxThreads  = flag.Int("max", 100, "https请求最大协程数")                                                                              // 最大协程数
-	speedTest   = flag.Int("speedtest", 1, "下载测速协程数量,设为0则不测速")                                                                      // 下载测速协程数量
+	speedTest   = flag.Int("speedtest", 5, "下载测速协程数量,设为0禁用测速")                                                                      // 下载测速协程数量
 	url         = flag.String("url", "https://archlinux.cloudflaremirrors.com/archlinux/iso/latest/archlinux-x86_64.iso", "测速文件地址") // 测速文件地址
 )
 
@@ -307,9 +307,32 @@ func readIPs(File string) ([]string, error) {
 	var ips []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		ips = append(ips, scanner.Text())
+		ipAddr := scanner.Text()
+		// 判断是否为 CIDR 格式的 IP 地址
+		if strings.Contains(ipAddr, "/") {
+			ip, ipNet, err := net.ParseCIDR(ipAddr)
+			if err != nil {
+				fmt.Printf("无法解析CIDR格式的IP: %v\n", err)
+				continue
+			}
+			for ip := ip.Mask(ipNet.Mask); ipNet.Contains(ip); inc(ip) {
+				ips = append(ips, ip.String())
+			}
+		} else {
+			ips = append(ips, ipAddr)
+		}
 	}
 	return ips, scanner.Err()
+}
+
+// inc函数实现ip地址自增
+func inc(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
 }
 
 // 测速函数

@@ -18,7 +18,7 @@ ipspeedtest 可以接受以下参数：
 - outfile：指定要将结果写入的 CSV 文件的名称。默认为 ip.csv。
 - port：指定要与 IP 地址一起使用的端口号。默认为 443。
 - max：指定要使用的最大协程数。默认为 100。
-- speedtest：指定要使用的下载测速协程数量。如果不需要进行测速，则将其设置为 0。默认为 1。
+- speedtest：指定要使用的下载测速协程数量。如果禁用测速，则将其设置为 0。默认为 5。
 - url：指定用于测速的文件的 URL。默认为 https://archlinux.cloudflaremirrors.com/archlinux/iso/latest/archlinux-x86_64.iso。
 
 # 运行
@@ -36,8 +36,6 @@ ipspeedtest 可以接受以下参数：
 
 # 许可证
 The MIT License (MIT)
-
-版权所有 (c) 2021 BAI LLC
 
 此处，"软件" 指 Cloudflare IP 测速器。
 
