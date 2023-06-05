@@ -64,7 +64,7 @@ type location struct {
 // 尝试提升文件描述符的上限
 func increaseMaxOpenFiles() {
 	fmt.Println("正在尝试提升文件描述符的上限...")
-	cmd := exec.Command("bash", "-c", "ulimit -n 102400")
+	cmd := exec.Command("bash", "-c", "ulimit -n 10000")
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Printf("提升文件描述符上限时出现错误: %v\n", err)
@@ -167,9 +167,9 @@ func main() {
 				wg.Done()
 				count++
 				percentage := float64(count) / float64(total) * 100
-				fmt.Printf("\033[32m已完成: %d\033[0m \033[31m总数: %d\033[0m \033[33m已完成: %.2f%%\033[0m\r", count, total, percentage)
+				fmt.Printf("已完成: %d 总数: %d 已完成: %.2f%%\r", count, total, percentage)
 				if count == total {
-					fmt.Printf("\033[32m已完成: %d\033[0m \033[31m总数: %d\033[0m \033[33m已完成: %.2f%%\033[0m\n", count, total, percentage)
+					fmt.Printf("已完成: %d 总数: %d 已完成: %.2f%%\n", count, total, percentage)
 				}
 			}()
 
@@ -272,9 +272,9 @@ func main() {
 
 					count++
 					percentage := float64(count) / float64(total) * 100
-					fmt.Printf("\033[33m已完成: %.2f%%\033[0m\r", percentage)
+					fmt.Printf("已完成: %.2f%%\r", percentage)
 					if count == total {
-						fmt.Printf("\033[33m已完成: %.2f%%\033[0m\n", percentage)
+						fmt.Printf("已完成: %.2f%%\033[0\n", percentage)
 					}
 				}
 			}()
@@ -397,6 +397,7 @@ func getDownloadSpeed(ip string) float64 {
 		Timeout: 5 * time.Second,
 	}
 	// 发送请求
+	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("IP %s 端口 %s 测速无效\n", ip, strconv.Itoa(*defaultPort))
