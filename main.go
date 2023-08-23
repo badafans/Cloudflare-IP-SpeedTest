@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"flag"
@@ -219,14 +220,34 @@ func main() {
 				return
 			}
 
-			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
+			buf := &bytes.Buffer{}
+			// 创建一个读取操作的超时
+			timeout := time.After(maxDuration)
+			// 使用一个 goroutine 来读取响应体
+			done := make(chan bool)
+			go func() {
+				_, err := io.Copy(buf, resp.Body)
+				done <- true
+				if err != nil {
+					return
+				}
+			}()
+			// 等待读取操作完成或者超时
+			select {
+			case <-done:
+				// 读取操作完成
+			case <-timeout:
+				// 读取操作超时
+				return
+			}
+
+			body := buf
 			if err != nil {
 				return
 			}
 
-			if strings.Contains(string(body), "uag=Mozilla/5.0") {
-				if matches := regexp.MustCompile(`colo=([A-Z]+)`).FindStringSubmatch(string(body)); len(matches) > 1 {
+			if strings.Contains(body.String(), "uag=Mozilla/5.0") {
+				if matches := regexp.MustCompile(`colo=([A-Z]+)`).FindStringSubmatch(body.String()); len(matches) > 1 {
 					dataCenter := matches[1]
 					loc, ok := locationMap[dataCenter]
 					if ok {
